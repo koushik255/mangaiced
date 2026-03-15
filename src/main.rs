@@ -2,9 +2,8 @@ use iced::widget::column;
 use iced::widget::image;
 use iced::widget::text;
 use iced::{Element, Size, keyboard, window};
-use std::fs;
-use std::path::PathBuf;
-
+use rustma::list_cbz_files;
+use rustma::list_jpg_files;
 fn main() -> iced::Result {
     iced::application(boot, update, view)
         .title(|_state: &State| "Image Viewer".into())
@@ -30,7 +29,13 @@ fn update(state: &mut State, message: Message) {
         Message::KeyboardEvent(event) => {
             if let keyboard::Event::KeyPressed { key, .. } = event {
                 if matches!(key, keyboard::Key::Named(keyboard::key::Named::Enter)) {
-                    state.show_sigma2 = state.show_sigma2 + 1;
+                    state.image_count = state.image_count + 1;
+                    let cbzs = list_cbz_files();
+                    cbzs.iter()
+                        .for_each(|f| println!("cbz file {}", f.display()));
+                }
+                if matches!(key, keyboard::Key::Named(keyboard::key::Named::ArrowDown)) {
+                    state.volume_count = state.volume_count + 1;
                 }
             }
         }
@@ -38,41 +43,31 @@ fn update(state: &mut State, message: Message) {
 }
 
 fn view(state: &State) -> Element<'_, Message> {
-    // let path = if state.show_sigma2 {
-    //     "/home/koushikk/Desktop/sigma2.jpg"
-    // } else {
-    //     "/home/koushikk/Desktop/sigma.jpg"
-    // };
     let images = list_jpg_files();
-    let num = state.show_sigma2;
+    let num = state.image_count;
     let first = &images[num];
     let img = image::Handle::from_path(first);
 
-    column![text(format!("Image: {}", first.display())), image(img)].into()
+    let cbz_paths = list_cbz_files();
+    let volume_count_number = state.volume_count;
+    let paths_volumes = &cbz_paths[volume_count_number];
+
+    column![
+        text(format!("Image: {}", first.display())),
+        image(img),
+        text(format!("volume count: {}", paths_volumes.display()))
+    ]
+    .into()
 }
 
 struct State {
-    show_sigma2: usize,
+    image_count: usize,
+    volume_count: usize,
 }
 
 fn boot() -> State {
-    State { show_sigma2: 0 }
-}
-
-fn list_jpg_files() -> Vec<PathBuf> {
-    let dir = "/home/koushikk/Desktop";
-    let mut jpg_files = Vec::new();
-
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if let Some(ext) = path.extension() {
-                if ext.eq_ignore_ascii_case("jpg") {
-                    jpg_files.push(path);
-                }
-            }
-        }
+    State {
+        image_count: 0,
+        volume_count: 0,
     }
-
-    jpg_files
 }
